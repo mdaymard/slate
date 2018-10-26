@@ -81,118 +81,124 @@ In order to accept http loads, you also need to add the ```NSAppTransportSecurit
 @implementation ViewController
 
 - (void)viewDidLoad {
-[super viewDidLoad];
+    [super viewDidLoad];
 
-// Once the user accepts the photo access permission, we load and play the smartshow
-[self promptPhotoAccessPermissions:^() {
-dispatch_async(dispatch_get_main_queue(), ^{
-[self loadAndPlay];
-});
-}];
+  // Once the user accepts the photo access permission, we load and play the smartshow
+  [self promptPhotoAccessPermissions:^() {
+  dispatch_async(dispatch_get_main_queue(), ^{
+      [self loadAndPlay];
+    });
+  }];
 }
+
 - (void)loadAndPlay {
-
-// The smartshow service provides methods to interact with a smartshow (play, pause, etc..)
-self.smartshowService = [[SmartshowService alloc] initWithWebView:self.webview];
-[self.smartshowService addStateDelegate:self];
-
-// The loader notice is displayed when the smartshow is loading
-[self.smartshowService setLoaderVisible:YES withColor:@"123456"];
-[self.smartshowService setLoaderNotice:@"Loader notice"];
-
-// The smartshow object contains the visual items (photos or videos), and other parameters (theme, credits, etc)
-self.smartshow = [[Smartshow alloc] init];
-[self.smartshow setStartCredits:@"Start credits"];
-[self.smartshow setEndCredits:@"End credits"];
-
-self.visualItems = [NSMutableArray array];
-
-// This will load a remote image as an example (needs an internet connection)
-SmartshowVisualItem *item = [SmartshowVisualItem imageFromRemoteURL:[NSURL URLWithString:@"http://lorempixel.com/640/480/nature/2/"]];
-// The first image will have a caption
-[item setCaption:@"Remote image"];
-[self.visualItems addObject:item];
-
-// Loads a local image from the storage (requires permission)
-NSArray *localImages = [self getMediasWithNbMax:1];
-[self.visualItems addObjectsFromArray:localImages];
-
-// We set all the visual items to the smartshow
-[self.smartshow setVisualItems:self.visualItems];
-
-// Loads a remote audio and sets some track infos
-SmartshowAudio *audio = [[SmartshowAudio alloc] init];
-audio.url = [NSURL URLWithString:@"http://www.soundhelix.com/examples/mp3/SoundHelix-Song-1"];
-audio.artist = @"Artist";
-audio.title = @"Title";
-audio.duration = @20.0;
-
-// We set the audio to the smartshow
-[self.smartshow setAudio:audio];
-
-// Will set the default theme ("classic")
-SmartshowTheme *theme = [self.smartshowService getDefaultTheme];
-[self.smartshow setTheme:theme];
-
-/*
-* We start building the smartshow
-* This will start loading the webview, and once it's done we will launch the smartshow.
-*/
-[self.smartshowService build:self.smartshow];
+    
+    // The smartshow service provides methods to interact with a smartshow (play, pause, etc..)
+    self.smartshowService = [[SmartshowService alloc] initWithWebView:self.webview];
+    [self.smartshowService addStateDelegate:self];
+    
+    self.smartshowService.regionalProvider = @"My regional provider";
+    self.smartshowService.subscriptionId = @"My subscription ID";
+    self.smartshowService.contextHandle = @"My context handle";
+    
+    // The loader notice is displayed when the smartshow is loading
+    [self.smartshowService setLoaderVisible:YES withColor:@"123456"];
+    [self.smartshowService setLoaderNotice:@"Loader notice"];
+    
+    // The smartshow object contains the visual items (photos or videos), and other parameters (theme, credits, etc)
+    self.smartshow = [[Smartshow alloc] init];
+    [self.smartshow setStartCredits:@"Start credits"];
+    [self.smartshow setEndCredits:@"End credits"];
+    
+    self.visualItems = [NSMutableArray array];
+    
+    // This will load a remote image as an example (needs an internet connection)
+    /*SmartshowVisualItem *item = [SmartshowVisualItem imageFromRemoteURL:[NSURL URLWithString:@"http://lorempixel.com/640/480/nature/2/"]];
+     // The first image will have a caption
+     [item setCaption:@"Remote image"];
+     [self.visualItems addObject:item];*/
+    
+    // Loads a local image from the storage (requires permission)
+    NSArray *localImages = [self getMediasWithNbMax:3];
+    [self.visualItems addObjectsFromArray:localImages];
+    
+    // We set all the visual items to the smartshow
+    [self.smartshow setVisualItems:self.visualItems];
+    
+    // Loads a remote audio and sets some track infos
+    SmartshowAudio *audio = [[SmartshowAudio alloc] init];
+    audio.url = [NSURL URLWithString:@"http://www.soundhelix.com/examples/mp3/SoundHelix-Song-1"];
+    audio.artist = @"Artist";
+    audio.title = @"Title";
+    audio.duration = @20.0;
+    
+    // We set the audio to the smartshow
+    [self.smartshow setAudio:audio];
+    
+    // Will set the default theme ("classic")
+    SmartshowTheme *theme = [self.smartshowService getDefaultTheme];
+    [self.smartshow setTheme:theme];
+    
+    /*
+     * We start building the smartshow
+     * This will start loading the webview, and once it's done we will launch the smartshow.
+     */
+    [self.smartshowService build:self.smartshow];
+    
+    [self.smartshowService build:self.smartshow completion:^ {
+        [self.smartshowService play];
+    }];
 }
 
 // Engine state callback
 - (void)onState:(SmartshowState)state {
-NSLog(@"Engine state : %u", state);
-
-if(state == SmartshowStateBuilt)
-[self.smartshowService play];
+    NSLog(@"Engine state : %u", state);
 }
 
 // Will retrieve photos from the device storage
 - (NSMutableArray *)getMediasWithNbMax:(int)nbMax{
-PHFetchOptions *options = [[PHFetchOptions alloc] init];
-NSSortDescriptor *descriptor = [NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO];
-options.sortDescriptors = @[descriptor];
-PHFetchResult *result = [PHAsset fetchAssetsWithMediaType:PHAssetMediaTypeImage options:options];
-
-int nbItems = (int)[result count];
-if(nbMax > nbItems)
-nbMax = nbItems;
-
-NSMutableArray *items = [NSMutableArray array];
-
-for (int i=0; i<nbMax; i++)
-{
-PHAsset *asset = [result objectAtIndex:i];
-SmartshowVisualItem *item = [SmartshowVisualItem imageFromLocalAsset:asset];
-[items addObject:item];
-}
-
-return items;
+    PHFetchOptions *options = [[PHFetchOptions alloc] init];
+    NSSortDescriptor *descriptor = [NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO];
+    options.sortDescriptors = @[descriptor];
+    PHFetchResult *result = [PHAsset fetchAssetsWithMediaType:PHAssetMediaTypeImage options:options];
+    
+    int nbItems = (int)[result count];
+    if(nbMax > nbItems)
+        nbMax = nbItems;
+    
+    NSMutableArray *items = [NSMutableArray array];
+    
+    for (int i=0; i<nbMax; i++)
+    {
+        PHAsset *asset = [result objectAtIndex:i];
+        SmartshowVisualItem *item = [SmartshowVisualItem imageFromLocalAsset:asset];
+        [items addObject:item];
+    }
+    
+    return items;
 }
 
 // Will prompt the permission pop up for accessing photos
 - (void)promptPhotoAccessPermissions:(void (^)(void))completionBlock {
-[PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
-switch (status) {
-case PHAuthorizationStatusAuthorized: {
-static dispatch_once_t once;
-dispatch_once(&once, ^{
-completionBlock();
-});
-}
-break;
-case PHAuthorizationStatusRestricted:
-NSLog(@"user restricted access");
-break;
-case PHAuthorizationStatusDenied:
-NSLog(@"user denied access");
-break;
-default:
-break;
-}
-}];
+    [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
+        switch (status) {
+            case PHAuthorizationStatusAuthorized: {
+                static dispatch_once_t once;
+                dispatch_once(&once, ^{
+                    completionBlock();
+                });
+            }
+                break;
+            case PHAuthorizationStatusRestricted:
+                NSLog(@"user restricted access");
+                break;
+            case PHAuthorizationStatusDenied:
+                NSLog(@"user denied access");
+                break;
+            default:
+                break;
+        }
+    }];
 }
 ```
 
@@ -267,27 +273,27 @@ First, assemble the smartshow data (Smartshow class) and method setX for paramet
 
 ``` objective_c
 -(Smartshow *)createNewSmartshow {
-Smartshow *smartshow = [[Smartshow alloc] init];
+    Smartshow *smartshow = [[Smartshow alloc] init];
 
-// Theme
-SmartshowTheme *theme = [self.smartshowService getDefaultTheme];
-[self.smartshow setTheme:theme];
+    // Theme
+    SmartshowTheme *theme = [self.smartshowService getDefaultTheme];
+    [self.smartshow setTheme:theme];
 
-// Audio
-SmartshowAudio *audio = [[SmartshowAudio alloc] init];
-audio.url = [NSURL URLWithString:@"http://www.soundhelix.com/examples/mp3/SoundHelix-Song-1"];
-audio.artist = @"Artist";
-audio.title = @"Title";
-audio.duration = @20.0;
-[self.smartshow setAudio:audio];
+    // Audio
+    SmartshowAudio *audio = [[SmartshowAudio alloc] init];
+    audio.url = [NSURL URLWithString:@"http://www.soundhelix.com/examples/mp3/SoundHelix-Song-1"];
+    audio.artist = @"Artist";
+    audio.title = @"Title";
+    audio.duration = @20.0;
+    [self.smartshow setAudio:audio];
 
-// Images
-NSMutableArray *images = [NSMutableArray array];
-SmartshowVisualItem *localImage = [SmartshowVisualItem imageFromRemoteURL:[NSURL URLWithString:@"http://lorempixel.com/640/480/nature/2/"]];
-[images addObject:localImage];
-[self.smartshow setVisualItems:images];
+    // Images
+    NSMutableArray *images = [NSMutableArray array];
+    SmartshowVisualItem *localImage = [SmartshowVisualItem imageFromRemoteURL:[NSURL URLWithString:@"http://lorempixel.com/640/480/nature/2/"]];
+    [images addObject:localImage];
+    [self.smartshow setVisualItems:images];
 
-return smartshow;
+    return smartshow;
 }
 ```
 
@@ -358,9 +364,12 @@ Local and remote images can be mixed within the same smartshow.
 Initiating playback is done in two steps, any time you create a new smartshow: 
 
 
-
 ``` objective_c
-[self.smartshowService build:self.smartshow];
+[self.smartshowService build:self.smartshow completion:^ {
+        // smartshow is built
+        // you can start it with : [self.smartshowService play];
+    }
+];
 ```
 
 
@@ -373,7 +382,7 @@ Initiating playback is done in two steps, any time you create a new smartshow:
 ```
 
 
-2.  Begin playback (**must** be done after building has completed -- use SmartshowStateDelegate.onState when state is ```SmartshowStateBuilt```, cf example 2 on the right)
+2.  Begin playback (**must** be done after building has completed 
 
 
 Interaction with the smartshow is asynchronous.  In most cases, this is irrelevant due to the single-threaded nature of javascript.  For the initial load of data into the webview, however, it is important that all other actions wait until after this asynchronous step has completed.
@@ -383,17 +392,15 @@ Interaction with the smartshow is asynchronous.  In most cases, this is irreleva
 
 ``` objective_c
 - (void)viewDidLoad {
-...
-// This will provide us callbacks for the smartshow state
-[self.smartshowService addStateDelegate:self];
-...
-[self.smartshowService build:self.smartshow];
+    ...
+    // This will provide us callbacks for the smartshow state
+    [self.smartshowService addStateDelegate:self];
+    ...
+    [self.smartshowService build:self.smartshow completion:^ {
+        [self.smartshowService play];
+    }];
 }
 
-- (void)onState:(SmartshowState)state {
-if(state == SmartshowStateBuilt)
-[self.smartshowService play];
-}
 ``` 
 
 cf on the right
@@ -494,7 +501,7 @@ An optional text slide ```NSString *``` can be displayed at the beginning and/or
 * Pause ``` [smartshowService pause] ```
 * Resume (from pause) ``` [smartshowService resume] ```
 * Replay (for smartshows in any state of playback) ``` [smartshowService replay] ```
-* Kill ``` [smartshowService kill] ```
+* Kill ``` [smartshowService kill:completionBlock] ```
 
 (Completely destroys the internal state of the javascript component, releasing the maximum possible memory subject to the javascript garbage collector; the smartshow is irrecoverable after calling this.)
 
