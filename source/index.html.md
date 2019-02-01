@@ -35,7 +35,7 @@ source 'https://bitbucket.org/avclsynchronoss/avcl-synchronoss-podspecs.git'
 ...
 target '<your_project>' do
 ...
-    pod 'SmartshowEngine', '= 2.1.1'
+    pod 'SmartshowEngine', '= 2.2.0'
 ... 
 end
 ...
@@ -635,7 +635,6 @@ Call the following method after the smartshow has been attached and before creat
 
 ``` objective_c
 self.smartshowService.subscriptionId = @"My subscription ID";
-
 ```
 
 ## Optional Usage Parameters ##
@@ -644,7 +643,6 @@ Optional parameters that will be sent along with usage monitoring information; c
 
 ``` objective_c
 self.smartshowService.debugInfo = @"My Debug info";
-
 ```
 
 Set arbitrary key-value string pairs for debugging; sent with all future usage logging information until it is edited or deleted. Please note that all non-string values will be ignored.
@@ -686,3 +684,4 @@ Note that these change the expected duration (not the animation velocity) so num
 <tr><td colspan=2>The "numerator" of the speed modifier</td></tr>
 <tr><td>speedMultBottom</td><td>int</td></tr>
 <tr><td colspan=2>The "denominator" of the speed modifier</td></tr>
+</table>
