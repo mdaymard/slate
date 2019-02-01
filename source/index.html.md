@@ -143,8 +143,6 @@ In order to accept http loads, you also need to add the ```NSAppTransportSecurit
      * We start building the smartshow
      * This will start loading the webview, and once it's done we will launch the smartshow.
      */
-    [self.smartshowService build:self.smartshow];
-    
     [self.smartshowService build:self.smartshow completion:^ {
         [self.smartshowService play];
     }];
@@ -479,6 +477,8 @@ Using the minimum parameters for audio will not produce a smartshow that is well
 <tr><td colspan=2>Array of timestamps in seconds for the bars</td></tr>
 <tr><td>LoopDuration</td><td>NSNumber *</td></tr>
 <tr><td colspan=2>Timestamp in seconds for looping the audio prior to the end of the file for a more seamless audio experience</td></tr>
+<tr><td>Energy</td><td>NSNumber *</td></tr>
+<tr><td colspan=2>Numerical value representing the perceived speed of the music (may not always be reflected by tempo)</td></tr>
 </table>
 
 ### Adding Captions ###
@@ -565,7 +565,7 @@ Smartshow *smartshowFromSavedData = [[Smartshow alloc] initFromSavedSmartshowDat
 You can then either store the smartshow object and use it later with ```SmartshowService```, or store the JSON data and use it later to recreate the saved smartshow with this method:
 
 
-# Appendix #
+# Appendix A - Media Retrieval #
 
 ## Asking user photo access permission ##
 ``` objective_c
@@ -625,5 +625,64 @@ You can then either store the smartshow object and use it later with ```Smartsho
 * [RoutingHTTPServer:1.0.2](https://github.com/mattstevens/RoutingHTTPServer)
 * [DFCache:1.3.3](https://github.com/kean/DFCache)
 
+# Appendix B - Usage monitoring #
+
+## Setting the Subscription ID ##
+
+The SubscriptionId should be initialized with an anonymized unique value per subscriber (ex: a GUID). Setting this parameter will de-duplicate usage hits from the same user for the purposes of billing. If this parameter is unset (or set to the same value across all installations), each individual device installation will be considered separate for the purposes of billing
+
+Call the following method after the smartshow has been attached and before creating any smartshow to identify your subscription unit in all future usage calls. Please note this id will not be retroactively applied.
+
+``` objective_c
+self.smartshowService.subscriptionId = @"My subscription ID";
+
+```
+
+## Optional Usage Parameters ##
+
+Optional parameters that will be sent along with usage monitoring information; can be used to facilitate debugging or provide additional usage metrics.
+
+``` objective_c
+self.smartshowService.debugInfo = @"My Debug info";
+
+```
+
+Set arbitrary key-value string pairs for debugging; sent with all future usage logging information until it is edited or deleted. Please note that all non-string values will be ignored.
+
+``` objective_c
+self.smartshowService.contextHandle = @"My context handle";
+```
+
+Set an arbitrary string for easier identification of app context; sent with all future logging information until edited or deleted.
 
 
+``` objective_c
+self.smartshowService.regionalProvider = @"My regional provider";
+```
+
+Set an arbitrary string to identify an organizational subunit (for instance, a subsidiary, sub-customer, or customer-group); sent with all future logging information until edited or deleted.
+
+
+
+# Appendix C - Manual Speed Control #
+
+The Smartshow SDK includes the capability for a user to manually influence the preferred speed, to make a Smartshow either faster or slower. Due to factors related to audio synchronization and the specifics of animation, manual control may not always be taken into account and is best thought of as guidance only.
+
+Rational numbers are preferred to maintain at least partial audio synchronization.
+
+These guidance parameters are completely optional. Set them like shown on the right. 
+
+``` objective_c
+[self.smartshow setSpeedMultTop:2];
+[self.smartshow setSpeedMultBottom:3];
+```
+
+Note that these change the expected duration (not the animation velocity) so numerator/denominator pairs resulting in values (0-1] will result in faster Smartshows and values > 1 will result in slower Smartshows.
+
+
+<table>
+<tr><td>Parameter</td><td>Value Type</td></tr>
+<tr><td>speedMultTop</td><td>int</td></tr>
+<tr><td colspan=2>The "numerator" of the speed modifier</td></tr>
+<tr><td>speedMultBottom</td><td>int</td></tr>
+<tr><td colspan=2>The "denominator" of the speed modifier</td></tr>
