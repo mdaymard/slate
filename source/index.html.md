@@ -70,7 +70,7 @@ In order to accept http loads, you also need to add the ```NSAppTransportSecurit
 
 #import "SmartshowEngine.h"
 
-@interface ViewController () <SmartshowStateDelegate>
+@interface ViewController () <SmartshowStateListener>
 
 @property (nonatomic, strong) SmartshowService *smartshowService;
 @property (nonatomic, strong) Smartshow *smartshow;
@@ -92,18 +92,19 @@ In order to accept http loads, you also need to add the ```NSAppTransportSecurit
 }
 
 - (void)loadAndPlay {
-    
     // The smartshow service provides methods to interact with a smartshow (play, pause, etc..)
-    self.smartshowService = [[SmartshowService alloc] initWithWebView:self.webview];
-    [self.smartshowService addStateDelegate:self];
+    NSError *error;
+    self.smartshowService = [[SmartshowService alloc] init];
+    [self.smartshowService setupWithWebView:self.webview error:&error];
+    [self.smartshowService addStateListener:self];
     
     self.smartshowService.regionalProvider = @"My regional provider";
     self.smartshowService.subscriptionId = @"My subscription ID";
     self.smartshowService.contextHandle = @"My context handle";
     
     // The loader notice is displayed when the smartshow is loading
-    [self.smartshowService setLoaderVisible:YES withColor:@"123456"];
-    [self.smartshowService setLoaderNotice:@"Loader notice"];
+    [self.smartshowService setLoaderVisible:YES withColor:@"123456" error:&error];
+    [self.smartshowService setLoaderNotice:@"Loader notice" error:&error];
     
     // The smartshow object contains the visual items (photos or videos), and other parameters (theme, credits, etc)
     self.smartshow = [[Smartshow alloc] init];
@@ -143,8 +144,12 @@ In order to accept http loads, you also need to add the ```NSAppTransportSecurit
      * We start building the smartshow
      * This will start loading the webview, and once it's done we will launch the smartshow.
      */
-    [self.smartshowService build:self.smartshow completion:^ {
-        [self.smartshowService play];
+    //[self.smartshowService build:self.smartshow];
+    
+    [self.smartshowService build:self.smartshow withCompletion:^(NSError *buildError) {
+        [self.smartshowService play:^(NSError *playError) {
+            
+        }];
     }];
 }
 
@@ -230,7 +235,9 @@ The service will also register a new user for http connections, as described on 
 
 
 ``` objective_c
-self.smartshowService = [[SmartshowService alloc] initWithWebView:self.webview];
+NSError *error;
+self.smartshowService = [[SmartshowService alloc] init];
+[self.smartshowService setupWithWebView:self.webview error:&error];
 ```
 
 
@@ -244,15 +251,15 @@ You must pass the webview as a parameter at instantiation:
 
 
 ``` objective_c
-[self.smartshowService setLoaderVisible:YES withColor:@"#123456"];
+[self.smartshowService setLoaderVisible:YES withColor:@"123456" error:&error];
 ```
 
-The smartshow SDK includes an optional loading widget which displays the first image of the smartshow and animated loading icon.  If enabled, it is displayed during loading and buffering states. To enable it and customize the color of the loading animation, set these parameters before the smartshow is built:
+The smartshow SDK includes an optional loading widget which displays the first image of the smartshow and animated loading icon.  If enabled, it is displayed during loading and buffering states. To enable it and customize the color of the loading animation (any HTML 5 color), set these parameters before the smartshow is built:
 
 
 
 ``` objective_c
-[self.smartshowService setLoaderNotice:@"Loader notice"];
+[self.smartshowService setLoaderNotice:@"Loader notice" error:&error];
 ```
 
 
@@ -363,9 +370,9 @@ Initiating playback is done in two steps, any time you create a new smartshow:
 
 
 ``` objective_c
-[self.smartshowService build:self.smartshow completion:^ {
+[self.smartshowService build:self.smartshow withCompletion:^(NSError *buildError) {
         // smartshow is built
-        // you can start it with : [self.smartshowService play];
+        // you can start it with : [self.smartshowService play:completionBlock];
     }
 ];
 ```
@@ -376,7 +383,9 @@ Initiating playback is done in two steps, any time you create a new smartshow:
 
 
 ``` objective_c
-[self.smartshowService play];
+[self.smartshowService play:^(NSError *playError) {
+            
+}];
 ```
 
 
@@ -391,17 +400,19 @@ Interaction with the smartshow is asynchronous.  In most cases, this is irreleva
 ``` objective_c
 - (void)viewDidLoad {
     ...
-    // This will provide us callbacks for the smartshow state
+    // This will also provide us callbacks for the smartshow state
     [self.smartshowService addStateDelegate:self];
     ...
-    [self.smartshowService build:self.smartshow completion:^ {
-        [self.smartshowService play];
+    [self.smartshowService build:self.smartshow withCompletion:^(NSError *buildError) {
+        [self.smartshowService play:^(NSError *playError) {
+            
+        }];
     }];
 }
 
 ``` 
 
-cf on the right
+See the example to the right
 
 
 
@@ -411,7 +422,9 @@ cf on the right
 
 ``` objective_c
 [self.smartshow <changeParameter>]; visual items, audio, theme
-[self.smartshowService refresh];
+[self.smartshowService refresh:^(NSError *refreshError){
+  // smartshow is refreshed
+}];
 ```
 
 The sequence of animations and their timing is dependent on the specifics of the smartshow attributes. If you change the smartshow parameters while it is being played, you must refresh the service in order to take the modifications into account:
@@ -427,7 +440,9 @@ The sequence of animations and their timing is dependent on the specifics of the
 
 ``` objective_c
 [self.smartshow setVisualItems:visualItems];
-[self.smartshowService refresh];
+[self.smartshowService refresh:^(NSError *refreshError){
+  // smartshow is refreshed
+}];
 ```
 
 The order of items (```SmartshowVisualItem```) in the smartshow is exactly the order of the item array given to the ```Smartshow``` data object. Because the specific sequence of animations and their timing can be dependent on this order, you must change the order of the array and refresh the service if the smartshow is in playback:
@@ -498,12 +513,15 @@ An optional text slide ```NSString *``` can be displayed at the beginning and/or
 
 # Playback Controls #
 
-* Pause ``` [smartshowService pause] ```
-* Resume (from pause) ``` [smartshowService resume] ```
-* Replay (for smartshows in any state of playback) ``` [smartshowService replay] ```
+* Pause ``` [smartshowService pause:completionBlock] ```
+* Resume (from pause) ``` [smartshowService resume:completionBlock] ```
+* Replay (for smartshows in any state of playback) ``` [smartshowService replay:completionBlock] ```
 * Kill ``` [smartshowService kill:completionBlock] ```
 
 (Completely destroys the internal state of the javascript component, releasing the maximum possible memory subject to the javascript garbage collector; the smartshow is irrecoverable after calling this.)
+
+***Note: We also provide API methods which do not require the use of callbacks and error handlers, but we strongly recommend to use them for improved stability and error handling.***
+
 
 # Resizing #
 By default, the smartshow will adjust to take the size of its parent container with no further action.  However, in the process of resizing, the view may be distorted in not-so-pretty ways.  If you wish to mask this, call ``` [smartshowService hideStage] ``` prior to resizing and ``` [smartshowService showStage] ``` after.
@@ -549,7 +567,7 @@ Here are the different possible states :
 
 
 ``` objective_c
-Smartshow *savedSmartshow =  [smartshowService save];
+Smartshow *savedSmartshow =  [smartshowService save:&error];
 NSData *jsonData = [savedSmartshow getSavedSmartshowData];
 ``` 
 
