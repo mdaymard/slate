@@ -265,6 +265,8 @@ The smartshow SDK includes an optional loading widget which displays the first i
 
 You can also set the text displayed on the loader (notice text):
 
+***For a better user experience, it is strongly recommended to use the built-in loader or implement your own loader by listening to [Lifecycle events](#lifecycle-events).***
+
 
 # Create a Smartshow #
 
@@ -430,7 +432,7 @@ See the example to the right
 The sequence of animations and their timing is dependent on the specifics of the smartshow attributes. If you change the smartshow parameters while it is being played, you must refresh the service in order to take the modifications into account:
 
 
-***Note that refreshing the smartshow might cause it to be rebuilt if the changes are significant, requiring load time. For example, changing images will rebuild the smartshow, but changing themes will not. If the smartshow was playing before refresh, it will play again after it passes the built state.***
+***Note that refreshing the smartshow might cause it to be rebuilt if the changes are significant, requiring load time. For example, changing images will rebuild the smartshow, but changing themes will not. If the smartshow was playing before refresh, it will play again after it passes the built state. If no changes have been made to the smartshow, rebuild and refresh can cause unnecessary additional loading time and are not recommended.***
 
 
 
